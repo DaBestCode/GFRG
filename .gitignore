@@ -1,5 +1,35 @@
-/__pycache__
-/log
-/tmp
-utils/__pycache__/logger.cpython-39.pyc
-utils/__pycache__/tools.cpython-39.pyc
+# ==========================================
+# Python & Environment
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+.conda/
+
+# ==========================================
+# SLURM Cluster Output
+# ==========================================
+# Ignore all SLURM log files so they don't clutter the repo
+slurm-*.out
+slurm-*.err
+
+# ==========================================
+# Datasets & Generated Arrays
+# ==========================================
+# Do not track massive data files or temporary RL cache arrays
+# Teammates should generate these locally or pull from a shared drive
+*.hdf
+*.h5
+*.npy
+data/processed/environments/
+
+# ==========================================
+# Jupyter Notebooks & IDEs
+# ==========================================
+.ipynb_checkpoints
+.vscode/
+.idea/
+.DS_Store

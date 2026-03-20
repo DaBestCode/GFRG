@@ -1,0 +1,73 @@
+2026/03/18 20:50:29 - INFO : {'name': 'housing_boston', 'log_level': 'info', 'episodes': 10, 'steps': 10, 'enlarge_num': 4, 'memory': 8, 'a': 1, 'b': 1, 'c': 1, 'hidden_size': 64, 'batch_size': 8, 'replay_strategy': 'random', 'ent_weight': 0.001, 'init_w': 0.1, 'id': '0', 'ablation_mode': '', 'out_put': '.'}
+2026/03/18 20:50:29 - INFO : running experiment on cpu
+2026/03/18 20:50:29 - INFO : read the data from /home/pjanga/Group-wise-Reinforcement-Feature-Generation-for-Optimal-and-Explainable-Representation-Space-Reconst/data/processed/housing_boston.hdf
+2026/03/18 20:50:29 - INFO : opt path is ./tmp/housing_boston_random_/
+2026/03/18 20:50:29 - INFO : initialize the features...
+2026/03/18 20:50:29 - INFO : initial memories with random
+2026/03/18 20:50:30 - INFO : MAE on original is: -2.925, MAE on generated is: -2.925
+2026/03/18 20:50:30 - INFO : RMSE on original is: -38.261, RMSE on generated is: -38.261
+2026/03/18 20:50:30 - INFO : 1-RAE on original is: 0.430, 1-RAE on generated is: 0.430
+2026/03/18 20:50:31 - INFO : start training, the original performance is 0.4295245697089801
+2026/03/18 20:50:33 - INFO : current cluster : defaultdict(<class 'list'>, {0: [0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11], 1: [4], 2: [12]})
+2026/03/18 20:50:33 - INFO : current select feature name : ['4']
+2026/03/18 20:50:33 - INFO : current select op : reciprocal
+2026/03/18 20:50:35 - INFO : current select feature name : ['4' '4_reciprocal']
+2026/03/18 20:50:35 - INFO : current select op : log
+2026/03/18 20:50:35 - INFO : New performance is: 0.433432, Best performance is: 0.433432 (e0s0) Base performance is: 0.429525
+2026/03/18 20:50:35 - INFO : Episode 0, Step 0 ends!
+2026/03/18 20:50:35 - INFO : Current spend time for step-0 is: 4.1s
+2026/03/18 20:50:37 - INFO : current cluster : defaultdict(<class 'list'>, {0: [0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 12], 1: [4, 13], 2: [11]})
+2026/03/18 20:50:37 - INFO : current select feature name : ['4' '4_reciprocal']
+2026/03/18 20:50:37 - INFO : current select op : cos
+2026/03/18 20:50:40 - INFO : current select feature name : ['4' '4_reciprocal']
+2026/03/18 20:50:40 - INFO : current select op : log
+2026/03/18 20:50:40 - INFO : New performance is: 0.435513, Best performance is: 0.435513 (e0s1) Base performance is: 0.429525
+2026/03/18 20:50:40 - INFO : Episode 0, Step 1 ends!
+2026/03/18 20:50:40 - INFO : Current spend time for step-1 is: 4.9s
+2026/03/18 20:50:42 - INFO : current cluster : defaultdict(<class 'list'>, {0: [0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12], 1: [4, 13], 2: [14], 3: [15]})
+2026/03/18 20:50:43 - INFO : current select feature name : ['4_cos']
+2026/03/18 20:50:43 - INFO : current select op : square
+2026/03/18 20:50:46 - INFO : current select feature name : ['4' '4_reciprocal']
+2026/03/18 20:50:46 - INFO : current select op : log
+2026/03/18 20:50:46 - INFO : New performance is: 0.424909, Best performance is: 0.435513 (e0s1) Base performance is: 0.429525
+2026/03/18 20:50:46 - INFO : Episode 0, Step 2 ends!
+2026/03/18 20:50:46 - INFO : Current spend time for step-2 is: 5.7s
+2026/03/18 20:50:48 - INFO : current cluster : defaultdict(<class 'list'>, {0: [0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 12], 2: [4, 13], 3: [11], 1: [14, 15, 16]})
+2026/03/18 20:50:49 - INFO : current select feature name : ['4_cos' '4_reciprocal_cos' '4_cos_square']
+2026/03/18 20:50:49 - INFO : current select op : reciprocal
+2026/03/18 20:50:53 - INFO : current select feature name : ['4' '4_reciprocal']
+2026/03/18 20:50:53 - INFO : current select op : log
+2026/03/18 20:50:53 - INFO : New performance is: 0.441633, Best performance is: 0.441633 (e0s3) Base performance is: 0.429525
+2026/03/18 20:50:53 - INFO : Episode 0, Step 3 ends!
+2026/03/18 20:50:53 - INFO : Current spend time for step-3 is: 6.9s
+2026/03/18 20:50:56 - INFO : current cluster : defaultdict(<class 'list'>, {0: [0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12], 1: [4, 13], 3: [14, 18, 19], 2: [15, 16, 17]})
+2026/03/18 20:50:57 - INFO : current select feature name : ['4_cos' '4_reciprocal_cos_reciprocal' '4_cos_square_reciprocal']
+2026/03/18 20:50:57 - INFO : current select op : stand_scaler
+2026/03/18 20:51:02 - INFO : current select feature name : ['13']
+2026/03/18 20:51:02 - INFO : current select op : log
+2026/03/18 20:51:02 - INFO : New performance is: 0.439245, Best performance is: 0.441633 (e0s3) Base performance is: 0.429525
+2026/03/18 20:51:02 - INFO : Episode 0, Step 4 ends!
+2026/03/18 20:51:02 - INFO : Current spend time for step-4 is: 9.1s
+2026/03/18 20:51:06 - INFO : current cluster : defaultdict(<class 'list'>, {0: [0, 1, 2, 3, 5, 7, 8, 9, 10, 11], 1: [4, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22], 3: [6], 2: [12]})
+2026/03/18 20:51:07 - INFO : current select feature name : ['10' '1' '2' '3' '5' '7' '8' '9' '11' '12']
+2026/03/18 20:51:07 - INFO : current select op : tanh
+2026/03/18 20:51:17 - INFO : current select feature name : ['13']
+2026/03/18 20:51:17 - INFO : current select op : log
+2026/03/18 20:51:17 - INFO : New performance is: 0.436346, Best performance is: 0.441633 (e0s3) Base performance is: 0.429525
+2026/03/18 20:51:17 - INFO : Episode 0, Step 5 ends!
+2026/03/18 20:51:17 - INFO : Current spend time for step-5 is: 15.4s
+2026/03/18 20:51:27 - INFO : current cluster : defaultdict(<class 'list'>, {0: [0, 1, 2, 3, 5, 7, 8, 9, 10, 11, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32], 1: [4, 13], 3: [6], 2: [12], 4: [14, 15, 16, 17, 18, 19, 20, 21, 22]})
+2026/03/18 20:51:27 - INFO : current select feature name : ['6']
+2026/03/18 20:51:27 - INFO : current select op : tanh
+2026/03/18 20:51:38 - INFO : current select feature name : ['4' '4_reciprocal']
+2026/03/18 20:51:38 - INFO : current select op : log
+2026/03/18 20:51:38 - INFO : New performance is: 0.429072, Best performance is: 0.441633 (e0s3) Base performance is: 0.429525
+2026/03/18 20:51:38 - INFO : Episode 0, Step 6 ends!
+2026/03/18 20:51:38 - INFO : Current spend time for step-6 is: 21.2s
+2026/03/18 20:51:49 - INFO : current cluster : defaultdict(<class 'list'>, {0: [0, 1, 2, 3, 5, 7, 8, 9, 10, 11, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32], 1: [4, 13], 4: [6, 33], 3: [12], 2: [14, 15, 16, 17, 18, 19, 20, 21, 22]})
+2026/03/18 20:51:49 - INFO : current select feature name : ['6' '6_tanh']
+2026/03/18 20:51:49 - INFO : current select op : reciprocal
+2026/03/18 20:52:02 - INFO : current select feature name : ['4' '4_reciprocal']
+2026/03/18 20:52:02 - INFO : current select op : log
+2026/03/18 20:52:02 - INFO : start to learn in model_c1
+2026/03/18 20:52:02 - ERROR : 'ClusterDQNNetwork' object has no attribute 'BATCH_SIZE'

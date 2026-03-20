@@ -1,0 +1,7 @@
+2026/03/18 15:53:12 - INFO : {'name': 'housing_boston', 'log_level': 'info', 'episodes': 10, 'steps': 10, 'enlarge_num': 4, 'memory': 8, 'a': 1, 'b': 1, 'c': 1, 'hidden_size': 64, 'batch_size': 8, 'replay_strategy': 'random', 'ent_weight': 0.001, 'init_w': 0.1, 'id': '0', 'ablation_mode': '', 'out_put': '.'}
+2026/03/18 15:53:12 - INFO : running experiment on cpu
+2026/03/18 15:53:12 - INFO : read the data from /home/pjanga/Group-wise-Reinforcement-Feature-Generation-for-Optimal-and-Explainable-Representation-Space-Reconst/data/processed/housing_boston.hdf
+2026/03/18 15:53:12 - INFO : opt path is ./tmp/housing_boston_random_/
+2026/03/18 15:53:15 - INFO : initialize the features...
+2026/03/18 15:53:15 - INFO : initial memories with random
+2026/03/18 15:53:15 - ERROR : Found array with 0 sample(s) (shape=(0, 13)) while a minimum of 1 is required by RandomForestRegressor.
