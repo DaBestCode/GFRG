@@ -66,6 +66,7 @@ class DQNNetwork(nn.Module):
         self.cuda_info = device is not None
         self.operation_emb = dict()
         self.memory = memory
+        self.BATCH_SIZE = memory.BATCH_SIZE
         self.learn_step_counter = 0
         self.init_w = init_w
         self.TARGET_REPLACE_ITER = 100
@@ -305,9 +306,9 @@ class ClusterDQNNetwork(DQNNetwork):
         q_next = self.target_net(net_input_)
         q_target = b_r + self.GAMMA * q_next.view(self.BATCH_SIZE, 1)
         loss = self.loss_func(q_eval, q_target)
-        self.optimizer.zero_grad()
+        optimizer.zero_grad()
         loss.backward()
-        self.optimizer.step()
+        optimizer.step()
 
         # actor_loss = []
         # critic_loss = []
@@ -328,9 +329,6 @@ class ClusterDQNNetwork(DQNNetwork):
 
         # loss = actor_loss + critic_loss + self.ENT_WEIGHT * entropy_loss
 
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
         # if self.select_mode:
         #     name = 'model_c1'
         # else:
@@ -411,9 +409,9 @@ class OpDQNNetwork(DQNNetwork):
         q_next = self.target_net(b_s_).detach()
         q_target = b_r + self.GAMMA * q_next.max(1)[0].view(self.BATCH_SIZE, 1)
         loss = self.loss_func(q_eval, q_target)
-        self.optimizer.zero_grad()
+        optimizer.zero_grad()
         loss.backward()
-        self.optimizer.step()
+        optimizer.step()
         # prob = self.forward(s1)
         # m = Categorical(prob)
         # logp = m.log_prob(op.reshape(-1)).reshape(-1, 1)
@@ -429,7 +427,6 @@ class OpDQNNetwork(DQNNetwork):
         # loss = actor_loss + critic_loss + self.ENT_WEIGHT * entropy_loss
         # optimizer.zero_grad()
         # loss.backward()
-        optimizer.step()
         # info(
         #     ' | name=model_op' +
         #     ' | loss={:.5f}'.format(loss.cpu().item()) +

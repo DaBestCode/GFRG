@@ -28,6 +28,7 @@ REPLAY = {
 
 class FeatureEnv:
     def __init__(self, task_name, task_type=None, ablation_mode=''):
+        self.task_name = task_name
         if task_type is None:
             self.task_type = TASK_DICT[task_name]
         else:
@@ -37,6 +38,15 @@ class FeatureEnv:
             self.mode = 'c'
         else:
             self.mode = ''
+            
+        # --- CACHE THE DOMAIN SPLIT ---
+        # Memorize the row order so we don't need column '9' later
+        if self.task_name == 'housing_boston':
+            import numpy as np
+            import os
+            base = os.path.dirname(os.path.abspath(__file__))
+            idx_path = os.path.join(base, 'data/processed/environments/current_env_index.npy')
+            self.env_sort_index = np.load(idx_path)
     '''
         input a Dataframe (cluster or feature set)
         :return the feature status
@@ -51,7 +61,30 @@ class FeatureEnv:
         return type is Numpy array
     '''
     def get_reward(self, data):
-        return downstream_task_new(data, self.task_type)
+        if self.task_name == 'housing_boston':
+            # Sort data using the cached row order (bypasses missing '9')
+            sorted_data = data.loc[self.env_sort_index]
+            total_rows = len(sorted_data)
+            split_1 = int(total_rows * 0.35)
+            split_2 = int(total_rows * 0.65)
+
+            # Isolate Env A (Low Tax) and Env B (High Tax)
+            env_A = sorted_data.iloc[:split_1].reset_index(drop=True)
+            env_B = sorted_data.iloc[split_2:].reset_index(drop=True)
+            
+            # Get accuracy scores for both environments
+            score_A = downstream_task_new(env_A, self.task_type, 'generic')
+            score_B = downstream_task_new(env_B, self.task_type, 'generic')
+            
+            # --- INVARIANT RISK MINIMIZATION (IRM) MATH ---
+            mean_score = (score_A + score_B) / 2.0
+            variance = abs(score_A - score_B)
+            penalty_weight = 0.5 
+            
+            irm_reward = mean_score - (penalty_weight * variance)
+            return irm_reward
+        else:
+            return downstream_task_new(data, self.task_type, self.task_name)
 
     '''
         input a Dataframe (cluster or feature set)
@@ -60,7 +93,20 @@ class FeatureEnv:
         return type is Numpy array
     '''
     def get_performance(self, data):
-        a, b, c = test_task_new(data, task=self.task_type)
+        if self.task_name == 'housing_boston':
+            # THE ULTIMATE BLIND TEST: Evaluate ONLY on Env C (Middle Tax)
+            # Sort data using the cached row order
+            sorted_data = data.loc[self.env_sort_index]
+            total_rows = len(sorted_data)
+            split_1 = int(total_rows * 0.35)
+            split_2 = int(total_rows * 0.65)
+
+            env_C = sorted_data.iloc[split_1:split_2].reset_index(drop=True)
+            # Test the final features on a domain the RL agent has NEVER seen
+            a, b, c = test_task_new(env_C, task=self.task_type, task_name='generic')
+        else:
+            a, b, c = test_task_new(data, task=self.task_type, task_name=self.task_name)
+            
         return self.model_performance(a, b, c)
 
     def cluster_build(self, X, y, cluster_num):

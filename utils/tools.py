@@ -109,7 +109,7 @@ def _cluster_features(features, y, cluster_num=2):
     k = int(np.sqrt(features.shape[1]))
     features = feature_distance(features, y)
     features = features.reshape(features.shape[0], -1)
-    clustering = AgglomerativeClustering(n_clusters=k, affinity='precomputed', linkage='single').fit(features)
+    clustering = AgglomerativeClustering(n_clusters=k, metric='precomputed', linkage='single').fit(features)
     labels = clustering.labels_
     clusters = defaultdict(list)
     for ind, item in enumerate(labels):
@@ -154,9 +154,39 @@ def relative_absolute_error(y_test, y_predict):
     return error
 
 
-def downstream_task_new(data, task_type):
+def downstream_task_new(data, task_type, task_name=None):
     X = data.iloc[:, :-1]
     y = data.iloc[:, -1].astype(int)
+    
+    # ---------------------------------------------------------
+    # CUSTOM DISTRIBUTION SHIFT REWARD (For RL Agent)
+    # ---------------------------------------------------------
+    if task_name == 'german_credit':
+        # Find Age column (named 9) and split by median
+        split_col = 9 if 9 in X.columns else X.columns[9]
+        split_val = X[split_col].median()
+        train_idx = np.where(X[split_col] <= split_val)[0]
+        test_idx = np.where(X[split_col] > split_val)[0]
+        
+        clf = RandomForestClassifier(random_state=0)
+        clf.fit(X.iloc[train_idx, :], y.iloc[train_idx])
+        y_predict = clf.predict(X.iloc[test_idx, :])
+        return f1_score(y.iloc[test_idx], y_predict, average='weighted')
+
+    elif task_name == 'housing_boston':
+        # Find TAX column (named 10) and split by median
+        split_col = 10 if 10 in X.columns else X.columns[9]
+        split_val = X[split_col].median()
+        train_idx = np.where(X[split_col] <= split_val)[0]
+        test_idx = np.where(X[split_col] > split_val)[0]
+        
+        reg = RandomForestRegressor(random_state=0)
+        reg.fit(X.iloc[train_idx, :], y.iloc[train_idx])
+        y_predict = reg.predict(X.iloc[test_idx, :])
+        return 1 - relative_absolute_error(y.iloc[test_idx], y_predict)
+    # ---------------------------------------------------------
+    
+    # Standard K-Fold Logic for all other datasets
     if task_type == 'cls':
         clf = RandomForestClassifier(random_state=0)
         f1_list = []
@@ -230,9 +260,45 @@ def downstream_task_cross_validataion(data, task_type):
         print(scores)
 
 
-def test_task_new(Dg, task='cls'):
+def test_task_new(Dg, task='cls', task_name=None):
     X = Dg.iloc[:, :-1]
     y = Dg.iloc[:, -1].astype(int)
+    
+    # ---------------------------------------------------------
+    # CUSTOM DISTRIBUTION SHIFT EVALUATION (For Final Report)
+    # ---------------------------------------------------------
+    if task_name == 'german_credit':
+        split_col = 9 if 9 in X.columns else X.columns[9]
+        split_val = X[split_col].median()
+        train_idx = np.where(X[split_col] <= split_val)[0]
+        test_idx = np.where(X[split_col] > split_val)[0]
+        
+        clf = RandomForestClassifier(random_state=0)
+        clf.fit(X.iloc[train_idx, :], y.iloc[train_idx])
+        y_predict = clf.predict(X.iloc[test_idx, :])
+        
+        pre = precision_score(y.iloc[test_idx], y_predict, average='weighted')
+        rec = recall_score(y.iloc[test_idx], y_predict, average='weighted')
+        f1 = f1_score(y.iloc[test_idx], y_predict, average='weighted')
+        return pre, rec, f1
+
+    elif task_name == 'housing_boston':
+        split_col = 10 if 10 in X.columns else X.columns[9]
+        split_val = X[split_col].median()
+        train_idx = np.where(X[split_col] <= split_val)[0]
+        test_idx = np.where(X[split_col] > split_val)[0]
+        
+        reg = RandomForestRegressor(random_state=0)
+        reg.fit(X.iloc[train_idx, :], y.iloc[train_idx])
+        y_predict = reg.predict(X.iloc[test_idx, :])
+        
+        mae = 1 - mean_absolute_error(y.iloc[test_idx], y_predict)
+        mse = 1 - mean_squared_error(y.iloc[test_idx], y_predict)
+        rae = 1 - relative_absolute_error(y.iloc[test_idx], y_predict)
+        return mae, mse, rae
+    # ---------------------------------------------------------
+    
+    # Standard K-Fold Logic for all other datasets
     if task == 'cls':
         clf = RandomForestClassifier(random_state=0)
         pre_list, rec_list, f1_list = [], [], []

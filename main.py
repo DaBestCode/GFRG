@@ -66,8 +66,8 @@ def train(param):
     MEMORY_CAPACITY = param['memory']
     ENV.report_performance(Dg, D_OPT)
     if SAMPLINE_METHOD == 'random':
-        cluster1_mem = RandomClusterReplay(MEMORY_CAPACITY, BATCH_SIZE, mem_1_dim, cuda_info)
-        cluster2_mem = RandomClusterReplay(MEMORY_CAPACITY, BATCH_SIZE, mem_1_dim, cuda_info, OP_DIM)
+        cluster1_mem = RandomClusterReplay(MEMORY_CAPACITY, BATCH_SIZE, mem_1_dim, cuda_info, STATE_DIM)
+        cluster2_mem = RandomClusterReplay(MEMORY_CAPACITY, BATCH_SIZE, STATE_DIM + OP_DIM, cuda_info, STATE_DIM)
         op_mem = RandomOperationReplay(MEMORY_CAPACITY, BATCH_SIZE, mem_op_dim, cuda_info)
     else:
         error(f'unsupported sampling method {SAMPLINE_METHOD}')

@@ -25,8 +25,7 @@ class Replay:
 class RandomClusterReplay(Replay):
     def __init__(self, size, batch_size, state_shape, device, op_dim=0):
         super().__init__(size, batch_size, device)
-        self.memory = np.zeros((self.MEMORY_CAPACITY, state_shape * 2 + state_shape *
-                                2 + op_dim * 2 + 1))
+        self.memory = np.zeros((self.MEMORY_CAPACITY, state_shape * 2 + op_dim * 2 + 1))
         self.STATE_DIM = state_shape
         self.ACTION_DIM = op_dim
         if self.cuda_info:
