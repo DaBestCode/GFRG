@@ -55,6 +55,15 @@ class DQNNetwork(nn.Module):
     def __init__(self, state_dim, cluster_state_dim, hidden_dim, gamma, device, memory: Replay,
                  ent_weight, EPS_START=0.9, EPS_END=0.05, EPS_DECAY=200, init_w=1e-6):
         super(DQNNetwork, self).__init__()
+        
+        #if state_dim == 64:
+        #    state_dim = 72
+        #elif state_dim == 64 + OP_DIM:
+        #    state_dim = 72 + OP_DIM
+            
+        #if cluster_state_dim == 64:
+        #    cluster_state_dim = 72
+
         self.state_dim = state_dim
         self.cluster_state_dim = cluster_state_dim
         self.hidden_dim = hidden_dim
@@ -270,24 +279,42 @@ class ClusterDQNNetwork(DQNNetwork):
         op_emb = torch.tensor(op_emb)
         if self.cuda_info:
             op_emb = op_emb.cuda()
+        
         state_op_emb = torch.cat((cached_state_embed, op_emb))
         q_vals, select_cluster_state_list, state_op_emb = self.forward(cached_state_emb=state_op_emb,
-                                                                     cached_cluster_state=cached_cluster_state, for_next=for_next)  # act_probs: [bs, act_dim], state_value: [bs, 1]
+                                                                     cached_cluster_state=cached_cluster_state, for_next=for_next)
+        
+        
+        # Get the MMD 'mean' gap of the FIRST feature (index -7 in our 72-dim state)
+        f1_mmd_gap = cached_state_embed[-7].item() 
+        
+        # If the first feature is already volatile (MMD > 0.15)
+        if f1_mmd_gap > 0.15:
+            # Mask the Q-values of any other volatile clusters
+            # Converting q_vals (list of tensors) to a single tensor for masking
+            q_tensor = torch.stack([q.view(-1) for q in q_vals]).squeeze()
+            
+            for i in range(len(q_tensor)):
+                # Check the MMD gap of candidate cluster i
+                f2_mmd_gap = select_cluster_state_list[i][-7].item()
+                
+                # If f2 is ALSO volatile, give it a massive penalty
+                if f2_mmd_gap > 0.15:
+                    q_tensor[i] -= 1e8 
+            
+            # Put back into list format for the rest of the original logic
+            q_vals = [q_tensor[i].view(1, -1) for i in range(len(q_tensor))]
+        
         eps_threshold = self.EPS_END + (self.EPS_START - self.EPS_END
                                         ) * math.exp(-1.0 * steps_done / self.EPS_DECAY)
         if for_next:
             acts = np.argmax(q_vals)
-            # m = Categorical(prob)
-            # acts = m.sample()  # on the self._device
-            # acts = acts.item()  # tensor shape [1] => a number (int)
         else:
             if np.random.uniform() > eps_threshold:
                 acts = np.argmax(q_vals)
-                # m = Categorical(prob)
-                # acts = m.sample()  # on the self._device
-                # acts = acts.item()  # tensor shape [1] => a number (int)
             else:
                 acts = np.random.randint(0, len(clusters))
+                
         f_cluster = X[:, list(clusters[acts])]
         action_emb = select_cluster_state_list[acts]
         f_names = np.array(feature_names)[list(clusters[acts])]

@@ -21,20 +21,19 @@ out_dir = os.path.join(BASE_DIR, 'data/processed/environments')
 if not os.path.exists(out_dir):
     os.makedirs(out_dir)
 
-# --- THE ROBUST SPLITTING LOGIC (Using Verified Columns) ---
-# --- THE ROBUST SPLITTING LOGIC (Using Verified Columns) ---
+
 if env_name == 'TAX_TAIL':
-    # Env 1: Economic Shift (Column index 10)
-    df['sort_metric'] = df[df.columns[10]] 
+    # Env 1: Economic Shift (Call column name 10 directly)
+    df['sort_metric'] = df[10] 
 
 elif env_name == 'SOCIO_TAIL':
-    # Env 2: Demographic Shift (LSTAT - Column index 13)
-    df['sort_metric'] = df[df.columns[13]]
+    # Env 2: Demographic Shift (Call column name 13 directly)
+    df['sort_metric'] = df[13]
 
 elif env_name == 'COMPOUND_TAIL':
-    # Env 3: Multivariate Euclidean Distance (Tax [10] + Crime [1])
+    # Env 3: Multivariate Euclidean Distance (Call columns 10 and 1 directly)
     scaler = StandardScaler()
-    scaled_vars = scaler.fit_transform(df[[df.columns[10], df.columns[1]]])
+    scaled_vars = scaler.fit_transform(df[[10, 1]])
     distances = np.sqrt(scaled_vars[:, 0]**2 + scaled_vars[:, 1]**2)
     df['sort_metric'] = distances
 

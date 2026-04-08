@@ -62,26 +62,36 @@ class FeatureEnv:
     '''
     def get_reward(self, data):
         if self.task_name == 'housing_boston':
+            import numpy as np
+            
             # Sort data using the cached row order (bypasses missing '9')
-            sorted_data = data.loc[self.env_sort_index]
+            sorted_data = data.loc[self.env_sort_index].copy()
+            
+            # --- THE ULTIMATE ANTI-CRASH SANITIZER ---
+            # 1. Catch explicit Infinities
+            sorted_data = sorted_data.replace([np.inf, -np.inf], np.nan)
+            # 2. Clip astronomical numbers that overflow sklearn's float32 limit
+            sorted_data = sorted_data.clip(lower=-1e15, upper=1e15)
+            # 3. Fill any NaNs (from infs or invalid math like log of negatives) with 0
+            sorted_data = sorted_data.fillna(0)
+            
             total_rows = len(sorted_data)
             split_1 = int(total_rows * 0.35)
             split_2 = int(total_rows * 0.65)
 
-            # Isolate Env A (Low Tax) and Env B (High Tax)
             env_A = sorted_data.iloc[:split_1].reset_index(drop=True)
             env_B = sorted_data.iloc[split_2:].reset_index(drop=True)
             
-            # Get accuracy scores for both environments
             score_A = downstream_task_new(env_A, self.task_type, 'generic')
             score_B = downstream_task_new(env_B, self.task_type, 'generic')
             
-            # --- INVARIANT RISK MINIMIZATION (IRM) MATH ---
+            # 2. Base Math
             mean_score = (score_A + score_B) / 2.0
             variance = abs(score_A - score_B)
-            penalty_weight = 0.5 
             
-            irm_reward = mean_score - (penalty_weight * variance)
+            strict_lambda = 2.0 
+            
+            irm_reward = mean_score - (strict_lambda * variance)
             return irm_reward
         else:
             return downstream_task_new(data, self.task_type, self.task_name)
@@ -94,9 +104,20 @@ class FeatureEnv:
     '''
     def get_performance(self, data):
         if self.task_name == 'housing_boston':
+            import numpy as np
+            
             # THE ULTIMATE BLIND TEST: Evaluate ONLY on Env C (Middle Tax)
             # Sort data using the cached row order
-            sorted_data = data.loc[self.env_sort_index]
+            sorted_data = data.loc[self.env_sort_index].copy()
+            
+            # --- THE ULTIMATE ANTI-CRASH SANITIZER ---
+            # 1. Catch explicit Infinities
+            sorted_data = sorted_data.replace([np.inf, -np.inf], np.nan)
+            # 2. Clip astronomical numbers that overflow sklearn's float32 limit
+            sorted_data = sorted_data.clip(lower=-1e15, upper=1e15)
+            # 3. Fill any NaNs (from infs or invalid math like log of negatives) with 0
+            sorted_data = sorted_data.fillna(0)
+            
             total_rows = len(sorted_data)
             split_1 = int(total_rows * 0.35)
             split_2 = int(total_rows * 0.65)
@@ -115,6 +136,7 @@ class FeatureEnv:
     def report_performance(self, original, opt):
         report = self.get_performance(opt)
         original_report = self.get_performance(original)
+        info('Original Feature Count: {}, Generated Feature Count: {}'.format(original.shape[1], opt.shape[1]))
         if self.task_type == 'reg':
             final_result = report.rae
             info('MAE on original is: {:.3f}, MAE on generated is: {:.3f}'.

@@ -90,7 +90,31 @@ def mi_feature_distance(features, y):
     dis_mat = np.array(dis_mat)
     return dis_mat
 
-
+def invariant_feature_distance(features, y, env_A_idx, env_B_idx):
+    """
+    Groups features based on their Distribution Shift (MMD) Stability Gradient
+    rather than their target correlation.
+    """
+    dis_mat = np.zeros((features.shape[1], features.shape[1]))
+    feature_mmd_scores = []
+    
+    # 1. Calculate the stability (MMD) of each feature independently
+    for i in range(features.shape[1]):
+        feature_A = features[env_A_idx, i].reshape(-1, 1)
+        feature_B = features[env_B_idx, i].reshape(-1, 1)
+        
+        # Simple statistical distance (Mean absolute difference) for speed
+        # Alternatively, you can plug in the full RBF kernel MMD here
+        shift_score = np.abs(np.mean(feature_A) - np.mean(feature_B)) 
+        feature_mmd_scores.append(shift_score)
+        
+    # 2. Group features by how similar their stability is
+    for i in range(features.shape[1]):
+        for j in range(features.shape[1]):
+            # Features with similar shift behavior have distance ~0
+            dis_mat[i, j] = np.abs(feature_mmd_scores[i] - feature_mmd_scores[j])
+            
+    return dis_mat
 
 def feature_distance(feature, y):
     return mi_feature_distance(feature, y)
@@ -107,7 +131,14 @@ def cluster_features(features, y, cluster_num=2, mode=''):
 
 def _cluster_features(features, y, cluster_num=2):
     k = int(np.sqrt(features.shape[1]))
-    features = feature_distance(features, y)
+    total_rows = features.shape[0]
+    split_1 = int(total_rows * 0.35)
+    split_2 = int(total_rows * 0.65)
+    
+    env_A_idx = np.arange(split_1)
+    env_B_idx = np.arange(split_2, total_rows)
+    features = invariant_feature_distance(features, y, env_A_idx, env_B_idx)
+    #features = feature_distance(features, y)
     features = features.reshape(features.shape[0], -1)
     clustering = AgglomerativeClustering(n_clusters=k, metric='precomputed', linkage='single').fit(features)
     labels = clustering.labels_
@@ -138,9 +169,29 @@ def feature_state_generation(X):
 
 def _feature_state_generation_des(X):
     feature_matrix = []
+    
+    
     for i in range(8):
         feature_matrix = feature_matrix + list(X.astype(np.float64).
                                                describe().iloc[i, :].describe().fillna(0).values)
+                                               
+    
+    total_rows = X.shape[0]
+    split_1 = int(total_rows * 0.35)
+    split_2 = int(total_rows * 0.65)
+    
+    env_A = X.iloc[:split_1, :]
+    env_B = X.iloc[split_2:, :]
+    
+    
+    feature_shift_gaps = np.abs(env_A.mean() - env_B.mean())
+    
+    
+    gap_statistics = list(feature_shift_gaps.describe().fillna(0).values)
+    
+    # Inject the Domain Gap into the agent's brain
+    feature_matrix = feature_matrix + gap_statistics
+    
     return feature_matrix
 
 
@@ -154,38 +205,45 @@ def relative_absolute_error(y_test, y_predict):
     return error
 
 
-def downstream_task_new(data, task_type, task_name=None):
+def downstream_task_new(data, task_type, task_name='housing_boston'):
     X = data.iloc[:, :-1]
     y = data.iloc[:, -1].astype(int)
     
-    # ---------------------------------------------------------
-    # CUSTOM DISTRIBUTION SHIFT REWARD (For RL Agent)
-    # ---------------------------------------------------------
-    if task_name == 'german_credit':
-        # Find Age column (named 9) and split by median
-        split_col = 9 if 9 in X.columns else X.columns[9]
-        split_val = X[split_col].median()
-        train_idx = np.where(X[split_col] <= split_val)[0]
-        test_idx = np.where(X[split_col] > split_val)[0]
+    if task_name in ['german_credit', 'housing_boston']:
         
-        clf = RandomForestClassifier(random_state=0)
-        clf.fit(X.iloc[train_idx, :], y.iloc[train_idx])
-        y_predict = clf.predict(X.iloc[test_idx, :])
-        return f1_score(y.iloc[test_idx], y_predict, average='weighted')
+        # 1. Dynamically detect the shift just like the Judge does
+        total_rows = X.shape[0]
+        env_A_sample = X.iloc[:int(total_rows*0.35), :]
+        env_B_sample = X.iloc[int(total_rows*0.65):, :]
+        
+        # We only check the ORIGINAL features (first 13) to define the split,
+        # otherwise a generated feature might accidentally become the split column!
+        # We only check the ORIGINAL features (first 13) to define the split
+        original_feature_count = 13 if task_name == 'housing_boston' else 20
+        check_limit = min(original_feature_count, X.shape[1])
+        
+        # NEW SCALE-INVARIANT MATH
+        mean_diff = np.abs(env_A_sample.iloc[:, :check_limit].mean() - env_B_sample.iloc[:, :check_limit].mean())
+        std_dev = X.iloc[:, :check_limit].std() + 1e-8
+        mmd_per_feature = mean_diff / std_dev
+        split_col_name = mmd_per_feature.idxmax()
+        
+        split_val = X[split_col_name].median()
+        train_idx = np.where(X[split_col_name] <= split_val)[0]
+        test_idx = np.where(X[split_col_name] > split_val)[0]
+        
+        if task_name == 'german_credit' or task_type == 'cls':
+            clf = RandomForestClassifier(random_state=0)
+            clf.fit(X.iloc[train_idx, :], y.iloc[train_idx])
+            y_predict = clf.predict(X.iloc[test_idx, :])
+            return f1_score(y.iloc[test_idx], y_predict, average='weighted')
 
-    elif task_name == 'housing_boston':
-        # Find TAX column (named 10) and split by median
-        split_col = 10 if 10 in X.columns else X.columns[9]
-        split_val = X[split_col].median()
-        train_idx = np.where(X[split_col] <= split_val)[0]
-        test_idx = np.where(X[split_col] > split_val)[0]
-        
-        reg = RandomForestRegressor(random_state=0)
-        reg.fit(X.iloc[train_idx, :], y.iloc[train_idx])
-        y_predict = reg.predict(X.iloc[test_idx, :])
-        return 1 - relative_absolute_error(y.iloc[test_idx], y_predict)
-    # ---------------------------------------------------------
-    
+        elif task_name == 'housing_boston' or task_type == 'reg':
+            reg = RandomForestRegressor(random_state=0)
+            reg.fit(X.iloc[train_idx, :], y.iloc[train_idx])
+            y_predict = reg.predict(X.iloc[test_idx, :])
+            return 1 - relative_absolute_error(y.iloc[test_idx], y_predict)
+
     # Standard K-Fold Logic for all other datasets
     if task_type == 'cls':
         clf = RandomForestClassifier(random_state=0)
@@ -260,43 +318,72 @@ def downstream_task_cross_validataion(data, task_type):
         print(scores)
 
 
-def test_task_new(Dg, task='cls', task_name=None):
+def test_task_new(Dg, task='cls', task_name='housing_boston'):
     X = Dg.iloc[:, :-1]
     y = Dg.iloc[:, -1].astype(int)
     
-    # ---------------------------------------------------------
-    # CUSTOM DISTRIBUTION SHIFT EVALUATION (For Final Report)
-    # ---------------------------------------------------------
-    if task_name == 'german_credit':
-        split_col = 9 if 9 in X.columns else X.columns[9]
-        split_val = X[split_col].median()
-        train_idx = np.where(X[split_col] <= split_val)[0]
-        test_idx = np.where(X[split_col] > split_val)[0]
+    if task_name in ['german_credit', 'housing_boston']:
+      
+        total_rows = X.shape[0]
+        env_A_sample = X.iloc[:int(total_rows*0.35), :]
+        env_B_sample = X.iloc[int(total_rows*0.65):, :]
         
-        clf = RandomForestClassifier(random_state=0)
-        clf.fit(X.iloc[train_idx, :], y.iloc[train_idx])
-        y_predict = clf.predict(X.iloc[test_idx, :])
-        
-        pre = precision_score(y.iloc[test_idx], y_predict, average='weighted')
-        rec = recall_score(y.iloc[test_idx], y_predict, average='weighted')
-        f1 = f1_score(y.iloc[test_idx], y_predict, average='weighted')
-        return pre, rec, f1
+        # We only check the ORIGINAL features (first 13) to define the split
+        original_feature_count = 13 if task_name == 'housing_boston' else 20
+        check_limit = min(original_feature_count, X.shape[1])
 
-    elif task_name == 'housing_boston':
-        split_col = 10 if 10 in X.columns else X.columns[9]
-        split_val = X[split_col].median()
-        train_idx = np.where(X[split_col] <= split_val)[0]
-        test_idx = np.where(X[split_col] > split_val)[0]
+        # NEW SCALE-INVARIANT MATH
+        mean_diff = np.abs(env_A_sample.iloc[:, :check_limit].mean() - env_B_sample.iloc[:, :check_limit].mean())
+        std_dev = X.iloc[:, :check_limit].std() + 1e-8
+        mmd_per_feature = mean_diff / std_dev
+        split_col_name = mmd_per_feature.idxmax()
         
-        reg = RandomForestRegressor(random_state=0)
-        reg.fit(X.iloc[train_idx, :], y.iloc[train_idx])
-        y_predict = reg.predict(X.iloc[test_idx, :])
+        info(f'>>> DYNAMIC EVAL: Detecting Shift on [{split_col_name}] (MMD: {mmd_per_feature.max():.4f})')
         
-        mae = 1 - mean_absolute_error(y.iloc[test_idx], y_predict)
-        mse = 1 - mean_squared_error(y.iloc[test_idx], y_predict)
-        rae = 1 - relative_absolute_error(y.iloc[test_idx], y_predict)
-        return mae, mse, rae
-    # ---------------------------------------------------------
+        split_val = X[split_col_name].median()
+        train_idx = np.where(X[split_col_name] <= split_val)[0]
+        test_idx = np.where(X[split_col_name] > split_val)[0]
+        
+        if task == 'cls':
+            clf = RandomForestClassifier(random_state=0)
+            clf.fit(X.iloc[train_idx, :], y.iloc[train_idx])
+            
+            y_pred_train = clf.predict(X.iloc[train_idx, :])
+            y_pred_test = clf.predict(X.iloc[test_idx, :])
+            
+            # Original Metrics
+            pre = precision_score(y.iloc[test_idx], y_pred_test, average='weighted')
+            rec = recall_score(y.iloc[test_idx], y_pred_test, average='weighted')
+            f1_test = f1_score(y.iloc[test_idx], y_pred_test, average='weighted')
+            
+            # Robustness Metrics
+            f1_train = f1_score(y.iloc[train_idx], y_pred_train, average='weighted')
+            stability_gap = np.abs(f1_train - f1_test)
+            transfer_ratio = f1_test / (f1_train + 1e-6)
+            
+            info(f'>>> [CLS ROBUSTNESS] Gap: {stability_gap:.4f} | Transfer Ratio: {transfer_ratio:.4f}')
+            return pre, rec, f1_test
+
+        elif task == 'reg':
+            reg = RandomForestRegressor(random_state=0)
+            reg.fit(X.iloc[train_idx, :], y.iloc[train_idx])
+            
+            y_pred_train = reg.predict(X.iloc[train_idx, :])
+            y_pred_test = reg.predict(X.iloc[test_idx, :])
+            
+            # Original Metrics (1 - Error)
+            mae_test = mean_absolute_error(y.iloc[test_idx], y_pred_test)
+            mse_test = mean_squared_error(y.iloc[test_idx], y_pred_test)
+            rae_test = relative_absolute_error(y.iloc[test_idx], y_pred_test)
+            
+            # Robustness Metrics
+            rae_train = relative_absolute_error(y.iloc[train_idx], y_pred_train)
+            stability_gap = np.abs(mean_absolute_error(y.iloc[train_idx], y_pred_train) - mae_test)
+            transfer_ratio = (1 - rae_test) / (1 - rae_train + 1e-6)
+            p_mmd = np.abs(np.mean(y_pred_train) - np.mean(y_pred_test))
+            
+            info(f'>>> [REG ROBUSTNESS] Stability Gap: {stability_gap:.4f} | Transfer Ratio: {transfer_ratio:.4f} | P-MMD: {p_mmd:.4f}')
+            return 1 - mae_test, 1 - mse_test, 1 - rae_test
     
     # Standard K-Fold Logic for all other datasets
     if task == 'cls':

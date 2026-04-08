@@ -4,7 +4,7 @@ os.environ['NUMEXPR_NUM_THREADS'] = '64'
 os.environ['OMP_NUM_THREADS'] = '64'
 os.environ['MKL_NUM_THREADS'] = '64'
 import sys
-
+from utils.tools import feature_state_generation, test_task_new
 
 from feature_env import FeatureEnv, REPLAY
 from initial import init_param
@@ -57,8 +57,7 @@ def train(param):
     hidden = param['hidden_size']
 
     OP_DIM = len(operation_set)
-    STATE_DIM = 0
-    STATE_DIM += hidden
+    STATE_DIM = 72
     mem_1_dim = STATE_DIM
     mem_op_dim = STATE_DIM
     info(f'initial memories with {SAMPLINE_METHOD}')
@@ -190,6 +189,13 @@ def train(param):
     info('Exploration ends!')
     info('Begin evaluation...')
     final = ENV.report_performance(D_original, D_OPT)
+    info('==================================================')
+    info('>>> STARTING OOD ROBUSTNESS SUITE EVALUATION <<<')
+    info('[Evaluating Original Baseline]')
+    test_task_new(D_original, task='reg', task_name=NAME)
+    info('[Evaluating Phase 4 Agent]')
+    test_task_new(D_OPT, task='reg', task_name=NAME)
+    info('==================================================')
     info('Total using time: {:.1f}s'.format(time.time() - training_start_time))
     if not os.path.exists(D_OPT_PATH):
         os.mkdir(D_OPT_PATH)
